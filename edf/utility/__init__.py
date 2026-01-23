@@ -49,6 +49,7 @@ class ER110_4_125_betas:
         omega0 = 2 * np.pi * c / 1560e-9
         polyfit = np.polyfit(omega - omega0, gvd[:, 1], deg=3)
         self.polyfit = polyfit[::-1]  # lowest order first
+        self.polyfit *= np.array([1, 1, 2, 6], dtype=float)
 
 
 class ER80_4_125_betas:
@@ -64,6 +65,7 @@ class ER80_4_125_betas:
         omega0 = 2 * np.pi * c / 1560e-9
         polyfit = np.polyfit(omega - omega0, gvd[:, 1], deg=3)
         self.polyfit = polyfit[::-1]  # lowest order first
+        self.polyfit *= np.array([1, 1, 2, 6], dtype=float)
 
 
 class ER80_8_125_betas:
@@ -78,3 +80,4 @@ class ER80_8_125_betas:
         omega0 = 2 * np.pi * c / 1560e-9
         polyfit = np.polyfit(omega - omega0, gvd[:, 1], deg=3)
         self.polyfit = polyfit[::-1]  # lowest order first
+        self.polyfit *= np.array([1, 1, 2, 6], dtype=float)
