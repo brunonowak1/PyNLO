@@ -1,0 +1,13 @@
+the data is obtained by digitizing figure 6 in this paper: Broadband chromatic dispersion in fiber-coupled optical interferometry by Allured and Ashcom.
+
+Yields beta2 @ 1030 nm of 20.17 ps^2/km
+@ 1061 nm of 18.37 ps^2/km
+D @ 1030 nm = -35.81 ps / nm km
+@ 1061 = -30.74 ps / nm km
+
+Agrees well with results in Tunable Fiber Lasers based on fiber Bragg grating arrays and a Theta Ring Cavity by Tobias Tiess. Tiess expects D ~ -36 to 38 ps / nm km.
+
+Doesn't agree very well with Measurement of the soliton number in guiding media through continuum generation by Castello-Lurbe et al. They expect beta @ 1061 of 24 +-2 ps^2/km
+
+
+
