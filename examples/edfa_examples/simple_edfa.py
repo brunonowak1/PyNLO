@@ -83,7 +83,7 @@ dv_dl = pulse.v_grid**2 / c  # J / Hz -> J / m
 # %% ---------- optional passive fiber ----------------------------------------
 pm1550 = pynlo.materials.SilicaFiber()
 pm1550.load_fiber_from_dict(pynlo.materials.pm1550)
-pm1550.gamma = gamma_a / (W * km)
+pm1550.gamma = gamma_a
 
 length_pm1550 = 1.119
 # ignore numpy error if length = 0.0, it occurs when n_records is not None and
