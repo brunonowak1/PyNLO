@@ -1,13 +1,19 @@
 the data is obtained by digitizing figure 6 in this paper: Broadband chromatic dispersion in fiber-coupled optical interferometry by Allured and Ashcom.
 
-Yields beta2 @ 1030 nm of 20.17 ps^2/km
-@ 1061 nm of 18.37 ps^2/km
+GVD @ 1030 nm = 20.17 fs^2/mm
 D @ 1030 nm = -35.81 ps / nm km
-@ 1061 = -30.74 ps / nm km
+TOD @ 1030 nm = 43.6 fs^3/mm
+FOD @ 1030 nm = 115 fs^4/mm
 
-Agrees well with results in Tunable Fiber Lasers based on fiber Bragg grating arrays and a Theta Ring Cavity by Tobias Tiess. Tiess expects D ~ -36 to 38 ps / nm km.
+The above agrees well with results in: 'Tunable Fiber Lasers based on fiber Bragg grating arrays and a Theta Ring Cavity' by Tobias Tiess where D @ 1030 nm ~ -36 to 38 ps / nm km; and 'Ultrashort Fiber Laser Platform for Seeding of 1-um Laser Amplifier Systems' by Yi Hua where GVD @ 1030 nm = 23 fs^2/mm and TOD = 41 fs^3/mm.
 
-Doesn't agree very well with Measurement of the soliton number in guiding media through continuum generation by Castello-Lurbe et al. They expect beta @ 1061 of 24 +-2 ps^2/km
+GVD @ 1061 nm = 18.37 fs^2/mm
+D @ 1061 = -30.74 ps / nm km
+
+Above doesn't agree very well with 'Measurement of the soliton number in guiding media through continuum generation' by Castello-Lurbe et al. They expect GVD @ 1061 = 24 +-2 ps^2/km
+
+GVD data may need a vertical offset to better match the references.
+
 
 
 
