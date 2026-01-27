@@ -136,7 +136,8 @@ class Mode(pynlo.media.Mode):
         overlap_p=1.0,
         overlap_s=1.0,
         n_ion=7e24,
-        a_eff=3.14e-12,
+        a_eff_s=None,
+        a_eff_p=None,
         sigma_p=None,
         sigma_a=None,
         sigma_e=None,
@@ -170,9 +171,10 @@ class Mode(pynlo.media.Mode):
             self._alpha_passive = np.asarray(alpha_passive, dtype=float)
         self.f_r = f_r
         self.overlap_p = overlap_p
-        self.overlap_s = overlap_s
+        self.overlap_s = np.asarray(overlap_s)
         self.n_ion = n_ion
-        self.a_eff = a_eff
+        self.a_eff_s   = np.asarray(a_eff_s)
+        self.a_eff_p   = float(a_eff_p)
         self.sigma_p = sigma_p
         self.sigma_a = sigma_a
         self.sigma_e = sigma_e
@@ -274,14 +276,14 @@ class Mode(pynlo.media.Mode):
     @property
     def _sum_a(self):
         p_s = self.f_r * self.p_v * self.dv
-        sum_a = self.overlap_s * p_s * self.sigma_a / (h * self.v_grid * self.a_eff)
+        sum_a = self.overlap_s * p_s * self.sigma_a / (h * self.v_grid * self.a_eff_s)
         sum_a = np.sum(sum_a)
         return sum_a
 
     @property
     def _sum_e(self):
         p_s = self.f_r * self.p_v * self.dv
-        sum_e = self.overlap_s * p_s * self.sigma_e / (h * self.v_grid * self.a_eff)
+        sum_e = self.overlap_s * p_s * self.sigma_e / (h * self.v_grid * self.a_eff_s)
         sum_e = np.sum(sum_e)
         return sum_e
 
@@ -291,7 +293,7 @@ class Mode(pynlo.media.Mode):
         sum_e = self._sum_e + self.sum_e_prev(self.z)
         n1 = _n1_func(
             self.n_ion,
-            self.a_eff,
+            self.a_eff_p,
             self.overlap_p,
             self.nu_p,
             self.Pp,
@@ -314,7 +316,7 @@ class Mode(pynlo.media.Mode):
         sum_e = self._sum_e + self.sum_e_prev(self.z)
         n2 = _n2_func(
             self.n_ion,
-            self.a_eff,
+            self.a_eff_p,
             self.overlap_p,
             self.nu_p,
             self.Pp,
@@ -337,7 +339,7 @@ class Mode(pynlo.media.Mode):
         sum_e = self._sum_e + self.sum_e_prev(self.z)
         n3 = _n3_func(
             self.n_ion,
-            self.a_eff,
+            self.a_eff_p,
             self.overlap_p,
             self.nu_p,
             self.Pp,
@@ -360,7 +362,7 @@ class Mode(pynlo.media.Mode):
         sum_e = self._sum_e + self.sum_e_prev(self.z)
         n4 = _n4_func(
             self.n_ion,
-            self.a_eff,
+            self.a_eff_p,
             self.overlap_p,
             self.nu_p,
             self.Pp,
@@ -383,7 +385,7 @@ class Mode(pynlo.media.Mode):
         sum_e = self._sum_e + self.sum_e_prev(self.z)
         n5 = _n5_func(
             self.n_ion,
-            self.a_eff,
+            self.a_eff_p,
             self.overlap_p,
             self.nu_p,
             self.Pp,
@@ -798,7 +800,8 @@ class EDF(pynlo.materials.SilicaFiber):
         overlap_p=1.0,
         overlap_s=1.0,
         n_ion=7e24,
-        a_eff=3.14e-12,
+        a_eff_s=None,
+        a_eff_p=None,
         sigma_p=None,
         sigma_a=None,
         sigma_e=None,
@@ -817,7 +820,8 @@ class EDF(pynlo.materials.SilicaFiber):
         self.overlap_p = overlap_p
         self.overlap_s = overlap_s
         self.n_ion = n_ion
-        self.a_eff = a_eff
+        self.a_eff_s = a_eff_s
+        self.a_eff_p = a_eff_p
         self.sigma_p = sigma_p
         self.sigma_a = sigma_a
         self.sigma_e = sigma_e
@@ -948,7 +952,8 @@ class EDF(pynlo.materials.SilicaFiber):
             overlap_p=self.overlap_p,
             overlap_s=self.overlap_s,
             n_ion=self.n_ion,
-            a_eff=self.a_eff,
+            a_eff_s=self.a_eff_s,
+            a_eff_p=self.a_eff_p,
             sigma_p=self.sigma_p,
             sigma_a=self.sigma_a,
             sigma_e=self.sigma_e,

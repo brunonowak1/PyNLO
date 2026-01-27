@@ -3,7 +3,7 @@ import sys
 
 sys.path.append("../")
 from scipy.constants import c
-import clipboard
+import helpers
 from edf.re_nlse_joint_5level import EDF
 import pynlo
 import numpy as np
@@ -51,9 +51,6 @@ spl_sigma_e = crossSection().sigma_e
 # %% -------------- load dispersion coefficients ------------------------------
 polyfit_n = ER80_4_125_betas().polyfit
 
-gamma_n = 6.5 / (W * km)
-gamma_a = 1.2 / (W * km)
-
 # %% ------------- pulse ------------------------------------------------------
 loss_ins = 10 ** (-0.7 / 10)
 loss_spl = 10 ** (-0.7 / 10)
@@ -78,12 +75,22 @@ pulse = pynlo.light.Pulse.Sech(
     min_time_window,
     alias=2,
 )
-dv_dl = pulse.v_grid**2 / c  # J / Hz -> J / m
+
+# passive fiber (PM1550) for passive NLSE segment gamma0
+pm1550_a_core_m = ...
+pm1550_NA       = ...
+
+# ---- gamma0 for passive PM1550 propagation (only scalar needed) ----
+gamma0_pm1550_m, _, _, _, _ = helpers.geom_two_areas(
+    pulse.v0, pulse.v_grid,
+    a_core_m=pm1550_a_core_m,
+    NA=pm1550_NA,
+)
 
 # %% ---------- optional passive fiber ----------------------------------------
 pm1550 = pynlo.materials.SilicaFiber()
 pm1550.load_fiber_from_dict(pynlo.materials.pm1550)
-pm1550.gamma = gamma_a
+pm1550.gamma = gamma0_pm1550_m
 
 length_pm1550 = 1.119
 # ignore numpy error if length = 0.0, it occurs when n_records is not None and
@@ -92,10 +99,22 @@ model_pm1550, sim_pm1550 = propagate(pm1550, pulse, length_pm1550)
 pulse_pm1550 = sim_pm1550.pulse_out
 
 # %% ------------ active fiber ------------------------------------------------
-r_eff_n = 3.06 * um / 2
-r_eff_a = 8.05 * um / 2
-a_eff_n = np.pi * r_eff_n**2
-a_eff_a = np.pi * r_eff_a**2
+# active EDF fiber geometry (signal mode)
+edf_a_core_m = ...
+edf_NA       = ...
+
+# pump config (for EDF rate equations)
+pump_is_cladding = True     # True/False
+pump_a_clad_m    = ...     # [m] only if pump_is_cladding=True
+
+gamma0_edf_m, a_eff_s, overlap_s, a_eff_p, overlap_p = helpers.geom_two_areas(
+    pulse.v0, pulse.v_grid,
+    a_core_m=edf_a_core_m,
+    NA=edf_NA,
+    pump_is_cladding=pump_is_cladding,
+    a_clad_m=pump_a_clad_m,
+)
+
 n_ion_n = 80 / 10 * np.log(10) / spl_sigma_a(c / 1530e-9)
 n_ion_a = 80 / 10 * np.log(10) / spl_sigma_a(c / 1530e-9)
 
@@ -107,17 +126,18 @@ length = 1.5
 
 edf = EDF(
     f_r=f_r,
-    overlap_p=1.0,
-    overlap_s=1.0,
+    overlap_p=overlap_p,
+    overlap_s=overlap_s,
     n_ion=n_ion_n,
-    a_eff=a_eff_n,
+    a_eff_s=a_eff_s,
+    a_eff_p=a_eff_p,
     sigma_p=sigma_p,
     sigma_a=sigma_a,
     sigma_e=sigma_e,
 )
 edf.set_beta_from_beta_n(v0, polyfit_n)
 beta_n = edf._beta(pulse.v_grid)
-edf.gamma = gamma_n
+edf.gamma = gamma0_edf_m
 
 # %% ----------- edfa ---------------------------------------------------------
 model_fwd, sim_fwd, model_bck, sim_bck = edfa.amplify(
