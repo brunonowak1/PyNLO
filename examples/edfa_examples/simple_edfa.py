@@ -1,11 +1,12 @@
 # %% ----- imports
 import sys
 
-sys.path.append("../")
+sys.path.append("../")  # change to your pynlo path
 from scipy.constants import c
-import helpers
+from helpers import geom_factors
 from edf.re_nlse_joint_5level import EDF
 import pynlo
+import pynlo.utility.clipboard
 import numpy as np
 import matplotlib.pyplot as plt
 from edf import edfa
@@ -77,16 +78,16 @@ pulse = pynlo.light.Pulse.Sech(
 )
 
 # passive fiber (PM1550) for passive NLSE segment gamma0
-pm1550_a_core_m = ...
-pm1550_NA       = ...
+pm1550_a_core_m = (8.5e-6)/2 # Coherent's PM1550-XP
+pm1550_NA       = 0.125
 
 # ---- gamma0 for passive PM1550 propagation (only scalar needed) ----
-gamma0_pm1550_m, _, _, _, _ = helpers.geom_two_areas(
+gamma0_pm1550_m,_,_ = geom_factors(
     pulse.v0, pulse.v_grid,
     a_core_m=pm1550_a_core_m,
     NA=pm1550_NA,
 )
-
+print(gamma0_pm1550_m)
 # %% ---------- optional passive fiber ----------------------------------------
 pm1550 = pynlo.materials.SilicaFiber()
 pm1550.load_fiber_from_dict(pynlo.materials.pm1550)
@@ -100,23 +101,23 @@ pulse_pm1550 = sim_pm1550.pulse_out
 
 # %% ------------ active fiber ------------------------------------------------
 # active EDF fiber geometry (signal mode)
-edf_a_core_m = ...
-edf_NA       = ...
+edf_a_core_m = (4e-6)/2 # Er80-4/125
+edf_A_doped = np.pi * (edf_a_core_m ** 2)  # [m^2] doped area
+edf_NA       = 0.2
 
 # pump config (for EDF rate equations)
-pump_is_cladding = True     # True/False
+pump_is_cladding = False     # True/False
 pump_a_clad_m    = ...     # [m] only if pump_is_cladding=True
 
-gamma0_edf_m, a_eff_s, overlap_s, a_eff_p, overlap_p = helpers.geom_two_areas(
+gamma0_edf_m, overlap_s, overlap_p = geom_factors(
     pulse.v0, pulse.v_grid,
     a_core_m=edf_a_core_m,
     NA=edf_NA,
     pump_is_cladding=pump_is_cladding,
     a_clad_m=pump_a_clad_m,
 )
-
+print(gamma0_edf_m,overlap_p,overlap_s)
 n_ion_n = 80 / 10 * np.log(10) / spl_sigma_a(c / 1530e-9)
-n_ion_a = 80 / 10 * np.log(10) / spl_sigma_a(c / 1530e-9)
 
 sigma_a = spl_sigma_a(pulse.v_grid)
 sigma_e = spl_sigma_e(pulse.v_grid)
@@ -129,8 +130,7 @@ edf = EDF(
     overlap_p=overlap_p,
     overlap_s=overlap_s,
     n_ion=n_ion_n,
-    a_eff_s=a_eff_s,
-    a_eff_p=a_eff_p,
+    A_doped=edf_A_doped,
     sigma_p=sigma_p,
     sigma_a=sigma_a,
     sigma_e=sigma_e,
@@ -189,3 +189,6 @@ sim.plot(
     "wvl",
     num=f"spectral evolution for {length} normal edf and {length_pm1550} pm1550 pre-chirp",
 )
+
+# keep all figures on screen
+plt.show()

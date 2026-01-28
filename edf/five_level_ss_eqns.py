@@ -310,8 +310,7 @@ def _factor_sigma(sigma, nu, P, overlap, A):
 
 def n1_func(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -329,13 +328,13 @@ def n1_func(
     tau_43,
     tau_54,
 ):
-    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, a_eff_s)
-    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, a_eff_s)
+    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, A_doped)
+    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, A_doped)
     if isinstance(P_s, np.ndarray) and P_s.size > 1:
         sigma_12 = np.sum(sigma_12)
         sigma_21 = np.sum(sigma_21)
 
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -357,7 +356,7 @@ def n1_func(
 
 def _n1_func(
     n,
-    a_eff_p,
+    A_doped,
     overlap_p,
     nu_p,
     P_p,
@@ -374,7 +373,7 @@ def _n1_func(
 ):
     sigma_12 = sum_a_p_s
     sigma_21 = sum_e_p_s
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -396,8 +395,7 @@ def _n1_func(
 
 def n2_func(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -415,13 +413,13 @@ def n2_func(
     tau_43,
     tau_54,
 ):
-    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, a_eff_s)
-    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, a_eff_s)
+    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, A_doped)
+    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, A_doped)
     if isinstance(P_s, np.ndarray) and P_s.size > 1:
         sigma_12 = np.sum(sigma_12)
         sigma_21 = np.sum(sigma_21)
 
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -443,7 +441,7 @@ def n2_func(
 
 def _n2_func(
     n,
-    a_eff_p,
+    A_doped,
     overlap_p,
     nu_p,
     P_p,
@@ -460,7 +458,7 @@ def _n2_func(
 ):
     sigma_12 = sum_a_p_s
     sigma_21 = sum_e_p_s
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -482,8 +480,7 @@ def _n2_func(
 
 def n3_func(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -501,13 +498,13 @@ def n3_func(
     tau_43,
     tau_54,
 ):
-    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, a_eff_s)
-    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, a_eff_s)
+    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, A_doped)
+    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, A_doped)
     if isinstance(P_s, np.ndarray) and P_s.size > 1:
         sigma_12 = np.sum(sigma_12)
         sigma_21 = np.sum(sigma_21)
 
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -529,7 +526,7 @@ def n3_func(
 
 def _n3_func(
     n,
-    a_eff_p,
+    A_doped,
     overlap_p,
     nu_p,
     P_p,
@@ -546,7 +543,7 @@ def _n3_func(
 ):
     sigma_12 = sum_a_p_s
     sigma_21 = sum_e_p_s
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -568,8 +565,7 @@ def _n3_func(
 
 def n4_func(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -587,13 +583,13 @@ def n4_func(
     tau_43,
     tau_54,
 ):
-    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, a_eff_s)
-    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, a_eff_s)
+    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, A_doped)
+    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, A_doped)
     if isinstance(P_s, np.ndarray) and P_s.size > 1:
         sigma_12 = np.sum(sigma_12)
         sigma_21 = np.sum(sigma_21)
 
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -615,7 +611,7 @@ def n4_func(
 
 def _n4_func(
     n,
-    a_eff_p,
+    A_doped,
     overlap_p,
     nu_p,
     P_p,
@@ -632,7 +628,7 @@ def _n4_func(
 ):
     sigma_12 = sum_a_p_s
     sigma_21 = sum_e_p_s
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -654,8 +650,7 @@ def _n4_func(
 
 def n5_func(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -673,13 +668,13 @@ def n5_func(
     tau_43,
     tau_54,
 ):
-    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, a_eff_s)
-    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, a_eff_s)
+    sigma_12 = _factor_sigma(sigma_a, nu_s, P_s, overlap_s, A_doped)
+    sigma_21 = _factor_sigma(sigma_e, nu_s, P_s, overlap_s, A_doped)
     if isinstance(P_s, np.ndarray) and P_s.size > 1:
         sigma_12 = np.sum(sigma_12)
         sigma_21 = np.sum(sigma_21)
 
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -701,7 +696,7 @@ def n5_func(
 
 def _n5_func(
     n,
-    a_eff_p,
+    A_doped,
     overlap_p,
     nu_p,
     P_p,
@@ -718,7 +713,7 @@ def _n5_func(
 ):
     sigma_12 = sum_a_p_s
     sigma_21 = sum_e_p_s
-    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, a_eff_p)
+    sigma_13 = _factor_sigma(sigma_p, nu_p, P_p, overlap_p, A_doped)
     sigma_31 = xi_p * sigma_13
     sigma_24 = eps_s * sigma_12
     sigma_35 = eps_p * sigma_13
@@ -740,8 +735,7 @@ def _n5_func(
 
 def dPp_dz(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -761,8 +755,7 @@ def dPp_dz(
 ):
     args = [
         n,
-        a_eff_s,
-        a_eff_p,
+        A_doped,
         overlap_p,
         overlap_s,
         nu_p,
@@ -790,8 +783,7 @@ def dPp_dz(
 
 def dPs_dz(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -811,8 +803,7 @@ def dPs_dz(
 ):
     args = [
         n,
-        a_eff_s,
-        a_eff_p,
+        A_doped,
         overlap_p,
         overlap_s,
         nu_p,
@@ -839,8 +830,7 @@ def dPs_dz(
 # same as dPs_dz but without the multiplying factor of P_s
 def gain(
     n,
-    a_eff_s,
-    a_eff_p,
+    A_doped,
     overlap_p,
     overlap_s,
     nu_p,
@@ -860,8 +850,7 @@ def gain(
 ):
     args = [
         n,
-        a_eff_s,
-        a_eff_p,
+        A_doped,
         overlap_p,
         overlap_s,
         nu_p,
