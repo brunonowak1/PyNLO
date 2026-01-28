@@ -1,17 +1,18 @@
 # %% ----- imports
 import sys
 
-sys.path.append("../")  # change to your pynlo path
+sys.path.append("../")
 from scipy.constants import c
 from helpers import geom_factors
-from edf.re_nlse_joint_5level import EDF
+from ydf.re_nlse_joint_2level import YDF
+#from edf.re_nlse_joint_5level import EDF
 import pynlo
 import pynlo.utility.clipboard
 import numpy as np
 import matplotlib.pyplot as plt
-from edf import edfa
+#from edf import edfa
 import collections
-from edf.utility import crossSection, ER80_4_125_betas
+from ydf.utility import crossSection, PM980_XP_betas
 
 
 ns = 1e-9
@@ -52,10 +53,11 @@ loss_mat = 10 ** (-1 / 10)
 
 f_r = 200e6
 n = 256
-v_min = c / 1750e-9
-v_max = c / 1400e-9
-v0 = c / 1560e-9
+v_min = c / 1150e-9
+v_max = c / 910e-9
+v0 = c / 1030e-9
 e_p = 35e-3 / 2 / f_r
+temperature = 300
 
 t_fwhm = 100e-15
 min_time_window = 10e-12
@@ -70,54 +72,55 @@ pulse = pynlo.light.Pulse.Sech(
     alias=2,
 )
 
-# %% -------------- load absorption coefficients from NLight ------------------
-spl_sigma_a = crossSection().sigma_a
-spl_sigma_e = crossSection().sigma_e
+# %% -------------- load absorption coefficients from Topper et al. ------------------
+spl_sigma_a = crossSection(temperature).sigma_a
+spl_sigma_e = crossSection(temperature).sigma_e
 
 # %% -------------- load dispersion coefficients ------------------------------
-polyfit_n = ER80_4_125_betas().polyfit
+polyfit_n = PM980_XP_betas(v0).polyfit
 
-# passive fiber (PM1550) for passive NLSE segment gamma0
-pm1550_a_core_m = (8.5e-6)/2 # Coherent's PM1550-XP
-pm1550_NA       = 0.125
+# passive fiber (PM980) for passive NLSE segment gamma0
+pm980_a_core_m = (5.5e-6)/2 # Coherent's PM980-XP
+pm980_NA       = 0.12
 
-# ---- gamma0 for passive PM1550 propagation (only scalar needed) ----
-gamma0_pm1550_m,_,_ = geom_factors(
+# ---- gamma0 for passive PM980 propagation (only scalar needed) ----
+gamma0_pm980_m,_,_ = geom_factors(
     pulse.v0, pulse.v_grid,
-    a_core_m=pm1550_a_core_m,
-    NA=pm1550_NA,
+    a_core_m=pm980_a_core_m,
+    NA=pm980_NA,
 )
 
 # %% ---------- optional passive fiber ----------------------------------------
-pm1550 = pynlo.materials.SilicaFiber()
-pm1550.load_fiber_from_dict(pynlo.materials.pm1550)
-pm1550.gamma = gamma0_pm1550_m
+pm980 = pynlo.materials.SilicaFiber()
+beta_n_pm980 = PM980_XP_betas(v0).polyfit
+pm980.set_beta_from_beta_n(v0, beta_n_pm980)
+pm980.gamma = gamma0_pm980_m
 
-length_pm1550 = 1.119
+length_pm980 = 1.119
 # ignore numpy error if length = 0.0, it occurs when n_records is not None and
 # propagation length is 0, the output pulse is still correct
-model_pm1550, sim_pm1550 = propagate(pm1550, pulse, length_pm1550)
-pulse_pm1550 = sim_pm1550.pulse_out
+model_pm980, sim_pm980 = propagate(pm980, pulse, length_pm980)
+pulse_pm980 = sim_pm980.pulse_out
 
 # %% ------------ active fiber ------------------------------------------------
-# active EDF fiber geometry (signal mode)
-edf_a_core_m = (4e-6)/2 # Er80-4/125
-edf_A_doped = np.pi * (edf_a_core_m ** 2)  # [m^2] doped area
-edf_NA       = 0.2
+# active YDF fiber geometry (signal mode)
+ydf_a_core_m = (6e-6)/2 # Yb1200-6/125DC
+ydf_A_doped = np.pi * (ydf_a_core_m ** 2)  # [m^2] doped area
+ydf_NA       = 0.12
 
 # pump config (for EDF rate equations)
-pump_is_cladding = False     # True/False
-pump_a_clad_m    = ...     # [m] only if pump_is_cladding=True
+pump_is_cladding = True     # True/False
+pump_a_clad_m    = 125e-6     # [m] only if pump_is_cladding=True
 
-gamma0_edf_m, overlap_s, overlap_p = geom_factors(
+gamma0_ydf_m, overlap_s, overlap_p = geom_factors(
     pulse.v0, pulse.v_grid,
-    a_core_m=edf_a_core_m,
-    NA=edf_NA,
+    a_core_m=ydf_a_core_m,
+    NA=ydf_NA,
     pump_is_cladding=pump_is_cladding,
     a_clad_m=pump_a_clad_m,
 )
 
-n_ion_n = 80 / 10 * np.log(10) / spl_sigma_a(c / 1530e-9)
+n_ion_n = 9.6e25 # obtained from Thorlabs representative for (nLIGHT's) Yb1200-6/125DC
 
 sigma_a = spl_sigma_a(pulse.v_grid)
 sigma_e = spl_sigma_e(pulse.v_grid)
@@ -125,19 +128,19 @@ sigma_p = spl_sigma_a(c / 980e-9)
 
 length = 1.5
 
-edf = EDF(
+ydf = YDF(
     f_r=f_r,
-    overlap_p=overlap_p,
-    overlap_s=overlap_s,
+    overlap_p=1.0,
+    overlap_s=1.0,
     n_ion=n_ion_n,
-    A_doped=edf_A_doped,
+    a_eff=a_eff_n,
     sigma_p=sigma_p,
     sigma_a=sigma_a,
     sigma_e=sigma_e,
 )
 edf.set_beta_from_beta_n(v0, polyfit_n)
 beta_n = edf._beta(pulse.v_grid)
-edf.gamma = gamma0_edf_m
+edf.gamma = gamma_n
 
 # %% ----------- edfa ---------------------------------------------------------
 model_fwd, sim_fwd, model_bck, sim_bck = edfa.amplify(
@@ -189,6 +192,3 @@ sim.plot(
     "wvl",
     num=f"spectral evolution for {length} normal edf and {length_pm1550} pm1550 pre-chirp",
 )
-
-# keep all figures on screen
-plt.show()
