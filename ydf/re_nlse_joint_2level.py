@@ -11,19 +11,9 @@ from scipy.constants import c, h
 import pynlo
 from scipy.integrate import RK45
 import collections
-from edf.five_level_ss_eqns import (
-    _n1_func,
+from ydf.two_level_ss_eqns import (
     _n2_func,
-    _n3_func,
-    _n4_func,
-    _n5_func,
-    tau_21,
-    tau_32,
-    tau_43,
-    tau_54,
-    xi_p,
-    eps_p,
-    eps_s,
+    tau,
 )
 
 
@@ -41,11 +31,7 @@ SimulationResult = collections.namedtuple(
         "a_t",
         "a_v",
         "Pp",
-        "n1_n",
         "n2_n",
-        "n3_n",
-        "n4_n",
-        "n5_n",
         "g_v",
     ],
 )
@@ -53,7 +39,7 @@ SimulationResult = collections.namedtuple(
 
 def package_sim_output(simulate):
     def wrapper(self, *args, **kwargs):
-        (pulse_out, z, a_t, a_v, Pp, n1_n, n2_n, n3_n, n4_n, n5_n, g_v) = simulate(
+        (pulse_out, z, a_t, a_v, Pp, n2_n, g_v) = simulate(
             self, *args, **kwargs
         )
         model = self
@@ -69,11 +55,7 @@ def package_sim_output(simulate):
                 self.phi_v = np.angle(a_v)
                 self.phi_t = np.angle(a_t)
                 self.Pp = Pp
-                self.n1_n = n1_n
                 self.n2_n = n2_n
-                self.n3_n = n3_n
-                self.n4_n = n4_n
-                self.n5_n = n5_n
                 self.model = model
                 self.g_v = g_v
 
@@ -130,33 +112,31 @@ class Mode(pynlo.media.Mode):
         rv_grid=None,
         r3=None,
         z=0.0,
-        # --------- parameters for EDF --------
+        # --------- parameters for YDF --------
         p_v=None,
         f_r=100e6,
-        overlap_p=1.0,
-        overlap_s=1.0,
+        overlap_p=None,
+        overlap_s=None,
         n_ion=9.6e25,
         A_doped=None,
-        sigma_p=None,
+        sigma_p_a=None,
+        sigma_p_e=None,
         sigma_a=None,
         sigma_e=None,
         Pp_fwd=0.0,
-        eps_p=eps_p,
-        xi_p=xi_p,
-        eps_s=eps_s,
-        tau_21=tau_21,
-        tau_32=tau_32,
-        tau_43=tau_43,
-        tau_54=tau_54,
+        tau=tau,
         sum_a_prev=None,
         sum_e_prev=None,
         Pp_prev=None,
+        nu_p=None
     ):
         assert isinstance(p_v, (np.ndarray, pynlo.utility.misc.ArrayWrapper))
         assert p_v.size == v_grid.size
         assert sigma_e is not None, "input absorption cross-section at 980 nm"
         assert isinstance(sigma_a, np.ndarray), "provide absorption cross-section"
         assert isinstance(sigma_e, np.ndarray), "provide emission cross-section"
+        assert isinstance(sigma_p_a, np.ndarray), "provide pump absorption cross-section"
+        assert isinstance(sigma_p_e, np.ndarray), "provide pump emission cross-section"
         assert (
             sigma_a.size == v_grid.size
         ), "absorption cross section grid must match frequency grid"
@@ -173,20 +153,16 @@ class Mode(pynlo.media.Mode):
         self.overlap_s = np.asarray(overlap_s)
         self.n_ion = n_ion
         self.A_doped = A_doped
-        self.sigma_p = sigma_p
+        self.sigma_p_a = sigma_p_a
+        self.sigma_p_e = sigma_p_e
         self.sigma_a = sigma_a
         self.sigma_e = sigma_e
         self._Pp_fwd = Pp_fwd
+        self._nu_p = (c / 980e-9) if nu_p is None else nu_p
         self._z_start = z
         self._rk45_Pp = None
 
-        self._eps_p = eps_p
-        self._xi_p = xi_p
-        self._eps_s = eps_s
-        self._tau_21 = tau_21
-        self._tau_32 = tau_32
-        self._tau_43 = tau_43
-        self._tau_54 = tau_54
+        self._tau = tau
 
         if sum_a_prev is None:
             assert sum_e_prev is None, "cannot only supply one"
@@ -212,64 +188,20 @@ class Mode(pynlo.media.Mode):
         self.dv = self.v_grid[1] - self.v_grid[0]
 
     @property
-    def tau_21(self):
-        return self._tau_21
+    def tau(self):
+        return self._tau
 
-    @tau_21.setter
-    def tau_21(self, tau):
-        self._tau_21 = tau
-
-    @property
-    def tau_32(self):
-        return self._tau_32
-
-    @tau_32.setter
-    def tau_32(self, tau):
-        self._tau_32 = tau
-
-    @property
-    def tau_43(self):
-        return self._tau_43
-
-    @tau_43.setter
-    def tau_43(self, tau):
-        self._tau_43 = tau
-
-    @property
-    def tau_54(self):
-        return self._tau_54
-
-    @tau_54.setter
-    def tau_54(self, tau):
-        self._tau_54 = tau
-
-    @property
-    def eps_p(self):
-        return self._eps_p
-
-    @eps_p.setter
-    def eps_p(self, eps_p):
-        self._eps_p = eps_p
-
-    @property
-    def xi_p(self):
-        return self._xi_p
-
-    @xi_p.setter
-    def xi_p(self, xi_p):
-        self._xi_p = xi_p
-
-    @property
-    def eps_s(self):
-        return self._eps_s
-
-    @eps_s.setter
-    def eps_s(self, eps_s):
-        self._eps_s = eps_s
+    @tau.setter
+    def tau(self, tau_set):
+        self._tau = tau_set
 
     @property
     def nu_p(self):
-        return c / 980e-9
+        return self._nu_p
+    
+    @nu_p.setter
+    def nu_p(self, nu_p_set):
+        self._nu_p = float(nu_p_set)
 
     @property
     def _sum_a(self):
@@ -286,29 +218,6 @@ class Mode(pynlo.media.Mode):
         return sum_e
 
     @property
-    def n1(self):
-        sum_a = self._sum_a + self.sum_a_prev(self.z)
-        sum_e = self._sum_e + self.sum_e_prev(self.z)
-        n1 = _n1_func(
-            self.n_ion,
-            self.A_doped,
-            self.overlap_p,
-            self.nu_p,
-            self.Pp,
-            self.sigma_p,
-            sum_a,
-            sum_e,
-            self.eps_p,
-            self.xi_p,
-            self.eps_s,
-            self.tau_21,
-            self.tau_32,
-            self.tau_43,
-            self.tau_54,
-        )
-        return n1
-
-    @property
     def n2(self):
         sum_a = self._sum_a + self.sum_a_prev(self.z)
         sum_e = self._sum_e + self.sum_e_prev(self.z)
@@ -318,87 +227,13 @@ class Mode(pynlo.media.Mode):
             self.overlap_p,
             self.nu_p,
             self.Pp,
-            self.sigma_p,
+            self.sigma_p_a,
+            self.sigma_p_e,
             sum_a,
             sum_e,
-            self.eps_p,
-            self.xi_p,
-            self.eps_s,
-            self.tau_21,
-            self.tau_32,
-            self.tau_43,
-            self.tau_54,
+            self.tau
         )
         return n2
-
-    @property
-    def n3(self):
-        sum_a = self._sum_a + self.sum_a_prev(self.z)
-        sum_e = self._sum_e + self.sum_e_prev(self.z)
-        n3 = _n3_func(
-            self.n_ion,
-            self.A_doped,
-            self.overlap_p,
-            self.nu_p,
-            self.Pp,
-            self.sigma_p,
-            sum_a,
-            sum_e,
-            self.eps_p,
-            self.xi_p,
-            self.eps_s,
-            self.tau_21,
-            self.tau_32,
-            self.tau_43,
-            self.tau_54,
-        )
-        return n3
-
-    @property
-    def n4(self):
-        sum_a = self._sum_a + self.sum_a_prev(self.z)
-        sum_e = self._sum_e + self.sum_e_prev(self.z)
-        n4 = _n4_func(
-            self.n_ion,
-            self.A_doped,
-            self.overlap_p,
-            self.nu_p,
-            self.Pp,
-            self.sigma_p,
-            sum_a,
-            sum_e,
-            self.eps_p,
-            self.xi_p,
-            self.eps_s,
-            self.tau_21,
-            self.tau_32,
-            self.tau_43,
-            self.tau_54,
-        )
-        return n4
-
-    @property
-    def n5(self):
-        sum_a = self._sum_a + self.sum_a_prev(self.z)
-        sum_e = self._sum_e + self.sum_e_prev(self.z)
-        n5 = _n5_func(
-            self.n_ion,
-            self.A_doped,
-            self.overlap_p,
-            self.nu_p,
-            self.Pp,
-            self.sigma_p,
-            sum_a,
-            sum_e,
-            self.eps_p,
-            self.xi_p,
-            self.eps_s,
-            self.tau_21,
-            self.tau_32,
-            self.tau_43,
-            self.tau_54,
-        )
-        return n5
 
     @property
     def alpha_passive(self):
@@ -410,18 +245,18 @@ class Mode(pynlo.media.Mode):
 
     def gain(self, z, p_v):
         active = (
-            -self.sigma_a * self.n1
-            + self.sigma_e * self.n2
-            - self.sigma_a * self.eps_s * self.n2
+            self.sigma_e * self.n2
+            + self.sigma_a * self.n2
+            - self.sigma_a * self.n_ion
         ) * self.overlap_s
         passive = self.alpha_passive
         return active + passive
 
     def _dPp_dz(self, z, Pp):
         active = (
-            -self.sigma_p * self.n1
-            + self.sigma_p * self.xi_p * self.n3
-            - self.sigma_p * self.eps_p * self.n3
+            self.sigma_p_e * self.n2
+            + self.sigma_p_a * self.n2
+            - self.sigma_p_a * self.n_ion
         ) * self.overlap_p
         passive = self.alpha_passive
         return (active + passive) * Pp
@@ -455,7 +290,7 @@ class Mode(pynlo.media.Mode):
             self.rk45_Pp.step()
 
 
-class Model_EDF(pynlo.model.Model):
+class Model_YDF(pynlo.model.Model):
     def __init__(self, pulse, mode):
         super().__init__(pulse, mode)
         self._Pp_record = []
@@ -674,17 +509,8 @@ class Model_EDF(pynlo.model.Model):
         Pp[0] = self.mode.Pp_fwd
 
         # inversion
-        n1_n = np.empty(n_records, dtype=float)
-        n1_n[0] = self.mode.n1 / self.mode.n_ion
         n2_n = np.empty(n_records, dtype=float)
         n2_n[0] = self.mode.n2 / self.mode.n_ion
-        n3_n = np.empty(n_records, dtype=float)
-        n3_n[0] = self.mode.n3 / self.mode.n_ion
-        n4_n = np.empty(n_records, dtype=float)
-        n4_n[0] = self.mode.n4 / self.mode.n_ion
-        n5_n = np.empty(n_records, dtype=float)
-        n5_n[0] = self.mode.n5 / self.mode.n_ion
-
         # gain
         g_v = np.empty((n_records, pulse_out.n), dtype=float)
         g_v[0, :] = self.mode.gain(None, None)
@@ -715,11 +541,7 @@ class Model_EDF(pynlo.model.Model):
                 a_t_record[idx, :] = pulse_out.a_t
                 a_v_record[idx, :] = pulse_out.a_v
                 Pp[idx] = self.mode.Pp_fwd
-                n1_n[idx] = self.mode.n1 / self.mode.n_ion
                 n2_n[idx] = self.mode.n2 / self.mode.n_ion
-                n3_n[idx] = self.mode.n3 / self.mode.n_ion
-                n4_n[idx] = self.mode.n4 / self.mode.n_ion
-                n5_n[idx] = self.mode.n5 / self.mode.n_ion
                 g_v[idx, :] = self.mode.gain(None, None)
 
                 # Plot
@@ -738,11 +560,7 @@ class Model_EDF(pynlo.model.Model):
             a_t=a_t_record,
             a_v=a_v_record,
             Pp=Pp,
-            n1_n=n1_n,
             n2_n=n2_n,
-            n3_n=n3_n,
-            n4_n=n4_n,
-            n5_n=n5_n,
             g_v=g_v,
         )
         return sim_res
@@ -778,7 +596,7 @@ class NLSE(pynlo.model.NLSE):
         self._use_fftshift = True
 
         # ---- Propagate
-        a_v, z, dz, k5_v, cont = Model_EDF.propagate(
+        a_v, z, dz, k5_v, cont = Model_YDF.propagate(
             self, a_v, z, z_stop, dz, local_error, k5_v=k5_v, cont=cont
         )
 
@@ -787,28 +605,24 @@ class NLSE(pynlo.model.NLSE):
         return a_v, z, dz, k5_v, cont
 
     def simulate(self, z_grid, local_error=1e-6, n_records=None, plot=None):
-        return Model_EDF.simulate(self, z_grid, local_error, n_records, plot)
+        return Model_YDF.simulate(self, z_grid, local_error, n_records, plot)
 
 
-class EDF(pynlo.materials.SilicaFiber):
+class YDF(pynlo.materials.SilicaFiber):
     def __init__(
         self,
         alpha_passive=0,
         f_r=100e6,
-        overlap_p=1.0,
-        overlap_s=1.0,
-        n_ion=7e24,
+        overlap_p=None,
+        overlap_s=None,
+        n_ion=9.6e25,
         A_doped=None,
-        sigma_p=None,
+        sigma_p_a=None,
+        sigma_p_e=None,
         sigma_a=None,
         sigma_e=None,
-        eps_p=eps_p,
-        xi_p=xi_p,
-        eps_s=eps_s,
-        tau_21=tau_21,
-        tau_32=tau_32,
-        tau_43=tau_43,
-        tau_54=tau_54,
+        tau=tau,
+        nu_p=None,
     ):
         super().__init__()
 
@@ -818,72 +632,20 @@ class EDF(pynlo.materials.SilicaFiber):
         self.overlap_s = overlap_s
         self.n_ion = n_ion
         self.A_doped = A_doped
-        self.sigma_p = sigma_p
+        self.sigma_p_a = sigma_p_a
+        self.sigma_p_e = sigma_p_e
         self.sigma_a = sigma_a
         self.sigma_e = sigma_e
-        self._tau_21 = tau_21
-        self._tau_32 = tau_32
-        self._tau_43 = tau_43
-        self._tau_54 = tau_54
-        self._xi_p = xi_p
-        self._eps_p = eps_p
-        self._eps_s = eps_s
+        self._tau = tau
+        self.nu_p = (c / 980e-9) if nu_p is None else nu_p
 
     @property
-    def tau_21(self):
-        return self._tau_21
+    def tau(self):
+        return self._tau
 
-    @tau_21.setter
-    def tau_21(self, tau):
-        self._tau_21 = tau
-
-    @property
-    def tau_32(self):
-        return self._tau_32
-
-    @tau_32.setter
-    def tau_32(self, tau):
-        self._tau_32 = tau
-
-    @property
-    def tau_43(self):
-        return self._tau_43
-
-    @tau_43.setter
-    def tau_43(self, tau):
-        self._tau_43 = tau
-
-    @property
-    def tau_54(self):
-        return self._tau_54
-
-    @tau_54.setter
-    def tau_54(self, tau):
-        self._tau_54 = tau
-
-    @property
-    def eps_p(self):
-        return self._eps_p
-
-    @eps_p.setter
-    def eps_p(self, eps_p):
-        self._eps_p = eps_p
-
-    @property
-    def xi_p(self):
-        return self._xi_p
-
-    @xi_p.setter
-    def xi_p(self, xi_p):
-        self._xi_p = xi_p
-
-    @property
-    def eps_s(self):
-        return self._eps_s
-
-    @eps_s.setter
-    def eps_s(self, eps_s):
-        self._eps_s = eps_s
+    @tau.setter
+    def tau(self, tau_set):
+        self._tau = tau_set
 
     def generate_model(
         self,
@@ -949,20 +711,16 @@ class EDF(pynlo.materials.SilicaFiber):
             overlap_s=self.overlap_s,
             n_ion=self.n_ion,
             A_doped=self.A_doped,
-            sigma_p=self.sigma_p,
+            sigma_p_a=self.sigma_p_a,
+            sigma_p_e=self.sigma_p_e,
             sigma_a=self.sigma_a,
             sigma_e=self.sigma_e,
             Pp_fwd=Pp_fwd,
-            eps_p=self.eps_p,
-            xi_p=self.xi_p,
-            eps_s=self.eps_s,
-            tau_21=self.tau_21,
-            tau_32=self.tau_32,
-            tau_43=self.tau_43,
-            tau_54=self.tau_54,
+            tau=self.tau,
             sum_a_prev=sum_a_prev,
             sum_e_prev=sum_e_prev,
             Pp_prev=Pp_prev,
+            nu_p=self.nu_p
         )
 
         # print("USING NLSE")

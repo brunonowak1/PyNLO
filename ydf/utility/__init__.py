@@ -19,18 +19,15 @@ class crossSection:
 
         # Row 0: units, Row 1: temperatures across columns 1..end, Rows 2..: data
         T_grid = arr_a[1, 1:].astype(float)                 # shape (nT,)
-        lam_nm = arr_a[2:, 0].astype(float)                 # shape (nlam,)
+        lam_nm_a = arr_a[2:, 0].astype(float)                 # shape (nlam,)
         sig_a_Tgrid = arr_a[2:, 1:].astype(float)           # shape (nlam, nT)
 
         # --- load emission spreadsheet ---
         df_e = pd.read_excel(path / "Topper_provided_cross_sections/Topper_et_al._YDF_emission_cross_sections.xlsx")
         arr_e = df_e.to_numpy()
 
-        # assume same temperature grid / wavelength grid layout
-        sig_e_Tgrid = arr_e[2:, 1:].astype(float)           # shape (nlam, nT)
-
-        # --- interpolate in temperature (simple linear) ---
-        T = self.temperature
+        lam_nm_e = arr_e[2:, 0].astype(float) 
+        sig_e_Tgrid = arr_e[2:, 1:].astype(float)           # shape (nlam, nT)            
 
         # --- interpolate in temperature (per wavelength row, all at once) ---
         # interp1d can interpolate along an axis; here axis=1 is temperature.
@@ -40,17 +37,15 @@ class crossSection:
             fill_value=(sig_e_Tgrid[:, 0], sig_e_Tgrid[:, -1]))(self.temperature)
 
         # wavelength in meters
-        lam_m = lam_nm * 1e-9
-        
-        a = np.column_stack([lam_m, sig_a])  # (lambda_m, sigma_abs)
-        e = np.column_stack([lam_m, sig_e])  # (lambda_m, sigma_em)
+        lam_m_a = lam_nm_a * 1e-9
+        lam_m_e = lam_nm_e * 1e-9
 
         # --- build sigma(v) callables (same as before) ---
         self.sigma_a = interp1d(
-            c / a[:, 0][::-1], a[:, 1][::-1], bounds_error=False, fill_value=0.0
+            c / lam_m_a[::-1], sig_a[::-1], bounds_error=False, fill_value=0.0
         )
         self.sigma_e = interp1d(
-            c / e[:, 0][::-1], e[:, 1][::-1], bounds_error=False, fill_value=0.0
+            c / lam_m_e[::-1], sig_e[::-1], bounds_error=False, fill_value=0.0
         )
 
 

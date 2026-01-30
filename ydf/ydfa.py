@@ -1,12 +1,12 @@
 # %% ----- imports
-from edf.re_nlse_joint_5level import EDF
+from ydf.re_nlse_joint_2level import YDF
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 
 def propagate_amp(
     pulse,
-    edf,
+    ydf,
     length,
     Pp,
     n_records=None,
@@ -16,8 +16,8 @@ def propagate_amp(
     t_shock=None,
     raman_on=False,
 ):
-    edf: EDF
-    model = edf.generate_model(
+    ydf: YDF
+    model = ydf.generate_model(
         pulse,
         Pp_fwd=Pp,
         sum_a_prev=sum_a_prev,
@@ -36,7 +36,7 @@ def propagate_amp(
 def amplify(
     p_fwd,
     p_bck,
-    edf,
+    ydf,
     length,
     Pp_fwd,
     Pp_bck,
@@ -48,7 +48,7 @@ def amplify(
     if p_bck is None:
         if Pp_bck == 0:
             model_fwd, sim_fwd = propagate_amp(
-                p_fwd, edf, length, Pp_fwd, n_records=n_records
+                p_fwd, ydf, length, Pp_fwd, n_records=n_records
             )
             return model_fwd, sim_fwd, None, None
         else:
@@ -58,14 +58,14 @@ def amplify(
     else:
         bck_seeded = True
 
-    edf: EDF
+    ydf: YDF
     done = False
     loop_count = 0
     sum_a_prev = lambda z: 0
     sum_e_prev = lambda z: 0
     Pp_prev = lambda z: 0
     while not done:
-        model_fwd = edf.generate_model(
+        model_fwd = ydf.generate_model(
             p_fwd,
             Pp_fwd=Pp_fwd,
             sum_a_prev=sum_a_prev,
@@ -87,7 +87,7 @@ def amplify(
             model_fwd.z_record, model_fwd.Pp_record[::-1]
         )
 
-        model_bck = edf.generate_model(
+        model_bck = ydf.generate_model(
             p_bck,
             Pp_fwd=Pp_bck,
             sum_a_prev=sum_a_prev,
