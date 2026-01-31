@@ -71,7 +71,7 @@ def package_sim_output(simulate):
                     p_ref=p_ref,
                 )
 
-            def plot(self, plot, num="Simulation Results"):
+            def plot(self, plot, num="Simulation Results", scale="db", db_floor=-40.0, normalize=True):
                 return pynlo.utility.misc.plot_results(
                     self.pulse_out,
                     self.model,
@@ -80,6 +80,9 @@ def package_sim_output(simulate):
                     self.a_v,
                     plot=plot,
                     num=num,
+                    scale=scale,
+                    db_floor=db_floor,                    
+                    normalize=normalize,
                 )
 
             def save(self, path, filename):

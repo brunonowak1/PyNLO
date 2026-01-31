@@ -11,6 +11,7 @@ __all__ = ["replace"]
 
 # %% Imports
 
+from unicodedata import normalize
 import numpy as np
 import matplotlib.pyplot as plt
 import pynlo
@@ -160,10 +161,15 @@ class SettableArrayProperty(property):
         array = ArrayWrapper(getter=item_getter, setter=item_setter)
         return array
 
-
-def plot_results(pulse_out, model, z, a_t, a_v, plot="frq", num="Simulation Results"):
+def plot_results(pulse_out, model, z, a_t, a_v, plot="frq", num="Simulation Results", 
+                scale="db",db_floor=-40.0,normalize=True):
     """
     plot PyNLO simulation results
+
+    scale:
+        "db"   -> dB scale (normalized so max = 0 dB)
+        "lin"  -> linear power (optionally normalized so max = 1)
+        "both" -> make two figures: dB and linear
 
     Args:
         pulse_out (object):
@@ -176,74 +182,120 @@ def plot_results(pulse_out, model, z, a_t, a_v, plot="frq", num="Simulation Resu
             whether to plot the frequency domain with frequency or wavelength
             on the x axis, default is frequency
     """
-    pulse_out: pynlo.light.Pulse
-    assert np.any([plot == "frq", plot == "wvl"]), "plot must be 'frq' or 'wvl'"
+    assert plot in ("frq", "wvl"), "plot must be 'frq' or 'wvl'"
+    assert scale in ("db", "lin", "both"), "scale must be 'db', 'lin', or 'both'"
 
+    # ---- if both, just call twice and return ----
+    if scale == "both":
+        plot_results(pulse_out, model, z, a_t, a_v, plot=plot, num=f"{num} (dB)",
+                     scale="db", db_floor=db_floor, normalize=normalize)
+        return plot_results(pulse_out, model, z, a_t, a_v, plot=plot, num=f"{num} (linear)",
+                            scale="lin", db_floor=db_floor, normalize=normalize)
+
+    # ---- local helpers (so db_floor/normalize are in scope) ----
+    def _norm(x):
+        x = np.asarray(x)
+        if normalize:
+            x = x / (np.max(x) + 1e-30)
+        return x
+
+    def _as_db(x):
+        x = _norm(x)
+        y = 10.0 * np.log10(x + 1e-30)
+        if db_floor is not None:
+            y = np.maximum(y, db_floor)
+        return y
+
+    def _as_lin(x):
+        return _norm(x)
+
+    # ---- layout ----
     fig = plt.figure(num=num, clear=True)
     ax0 = plt.subplot2grid((3, 2), (0, 0), rowspan=1)
     ax1 = plt.subplot2grid((3, 2), (0, 1), rowspan=1)
     ax2 = plt.subplot2grid((3, 2), (1, 0), rowspan=2, sharex=ax0)
     ax3 = plt.subplot2grid((3, 2), (1, 1), rowspan=2, sharex=ax1)
 
-    p_v_dB = 10 * np.log10(np.abs(a_v) ** 2)
-    p_v_dB -= p_v_dB.max()
+    # ---- build linear powers first ----
+    p_v = np.abs(a_v) ** 2                     # Nz x Nv (linear)
+    p_t = np.abs(a_t) ** 2                     # Nz x Nt (linear)
+    p_wl = p_v * model.dv_dl                   # Nz x Nv (linear "per wavelength")
 
-    p_wl = np.abs(a_v) ** 2 * model.dv_dl
-    p_wl_dB = 10 * np.log10(p_wl)
-    p_wl_dB -= p_wl_dB.max()
+    # ---- choose which scale arrays to plot ----
+    if scale == "db":
+        p_v_plot  = _as_db(p_v)
+        p_t_plot  = _as_db(p_t)
+        p_wl_plot = _as_db(p_wl)
+        ylab = "Power (dB)"
+        vmin, vmax = db_floor, 0.0
+        # keep same y-limits as before
+        yline_lim = (-50, 10)
+    else:  # "lin"
+        p_v_plot  = _as_lin(p_v)
+        p_t_plot  = _as_lin(p_t)
+        p_wl_plot = _as_lin(p_wl)
+        ylab = "Power (norm.)" if normalize else "Power (linear)"
+        vmin, vmax = (0.0, 1.0) if normalize else (None, None)
+        yline_lim = (0.0, 1.05) if normalize else (None, None)
 
+    # ---- frequency / wavelength plots ----
     if plot == "frq":
-        ax0.plot(1e-12 * pulse_out.v_grid, p_v_dB[0], color="b")
-        ax0.plot(1e-12 * pulse_out.v_grid, p_v_dB[-1], color="g")
-        img = ax2.pcolorfast(
-            1e-12 * pulse_out.v_grid,
+        x = 1e-12 * pulse_out.v_grid  # THz
+        ax0.plot(x, p_v_plot[0],  color="b")
+        ax0.plot(x, p_v_plot[-1], color="g")
+        ax2.pcolorfast(
+            x,
             1e3 * z,
-            p_v_dB[:-1, :-1],
-            vmin=-40.0,
-            vmax=0,
+            p_v_plot[:-1, :-1],
+            vmin=vmin,
+            vmax=vmax,
             cmap="CMRmap_r_t",
         )
-        # plt.colorbar(img, ax=ax2)
-        ax0.set_ylim(bottom=-50, top=10)
         ax2.set_xlabel("Frequency (THz)")
-    elif plot == "wvl":
-        wl_grid = sc.c / pulse_out.v_grid
-        ax0.plot(1e6 * wl_grid, p_wl_dB[0], color="b")
-        ax0.plot(1e6 * wl_grid, p_wl_dB[-1], color="g")
-        img = ax2.pcolorfast(
-            1e6 * wl_grid,
+
+    else:  # "wvl"
+        wl_grid = sc.c / pulse_out.v_grid          # meters
+        x = 1e6 * wl_grid                          # um
+        ax0.plot(x, p_wl_plot[0],  color="b")
+        ax0.plot(x, p_wl_plot[-1], color="g")
+        ax2.pcolorfast(
+            x,
             1e3 * z,
-            p_wl_dB[:-1, :-1],
-            vmin=-40.0,
-            vmax=0,
+            p_wl_plot[:-1, :-1],
+            vmin=vmin,
+            vmax=vmax,
             cmap="CMRmap_r_t",
         )
         ax2.invert_xaxis()
-        # plt.colorbar(img, ax=ax2)
-        ax0.set_ylim(bottom=-50, top=10)
         ax2.set_xlabel("wavelength ($\\mathrm{\\mu m}$)")
 
-    p_t_dB = 10 * np.log10(np.abs(a_t) ** 2)
-    p_t_dB -= p_t_dB.max()
-    ax1.plot(1e12 * pulse_out.t_grid, p_t_dB[0], color="b")
-    ax1.plot(1e12 * pulse_out.t_grid, p_t_dB[-1], color="g")
-    img = ax3.pcolorfast(
-        1e12 * pulse_out.t_grid,
+    # ---- time plots ----
+    xt = 1e12 * pulse_out.t_grid  # ps
+    ax1.plot(xt, p_t_plot[0],  color="b")
+    ax1.plot(xt, p_t_plot[-1], color="g")
+    ax3.pcolorfast(
+        xt,
         1e3 * z,
-        p_t_dB[:-1, :-1],
-        vmin=-40.0,
-        vmax=0,
+        p_t_plot[:-1, :-1],
+        vmin=vmin,
+        vmax=vmax,
         cmap="CMRmap_r_t",
     )
-    # plt.colorbar(img, ax=ax3)
-    ax1.set_ylim(bottom=-50, top=10)
     ax3.set_xlabel("Time (ps)")
 
-    ax0.set_ylabel("Power (dB)")
+    # ---- labels/limits ----
+    ax0.set_ylabel(ylab)
     ax2.set_ylabel("Propagation Distance (mm)")
+
+    if yline_lim[0] is not None:
+        ax0.set_ylim(*yline_lim)
+        ax1.set_ylim(*yline_lim)
+    else:
+        # if not normalized linear, leave autoscale
+        pass
+
     fig.tight_layout()
     fig.show()
-
     return fig, np.array([[ax0, ax1], [ax2, ax3]])
 
 
@@ -534,7 +586,7 @@ def package_sim_output(simulate):
                     figsize=figsize,
                 )
 
-            def plot(self, plot, num="Simulation Results"):
+            def plot(self, plot, num="Simulation Results", scale="db", db_floor=-40.0, normalize=True):
                 return plot_results(
                     self.pulse_out,
                     self.model,
@@ -543,6 +595,9 @@ def package_sim_output(simulate):
                     self.a_v,
                     plot=plot,
                     num=num,
+                    scale=scale,
+                    db_floor=db_floor,
+                    normalize=normalize,
                 )
 
             def save(self, path, filename):

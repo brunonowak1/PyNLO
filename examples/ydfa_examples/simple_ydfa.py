@@ -1,7 +1,7 @@
 # %% ----- imports
 import sys
 
-sys.path.append("../")
+sys.path.append("/Users/brunonowak/Github/PyNLO/")
 from scipy.constants import c
 from helpers import geom_factors
 from ydf.re_nlse_joint_2level import YDF
@@ -128,7 +128,7 @@ sigma_e = spl_sigma_e(pulse.v_grid)
 sigma_p_a = spl_sigma_a(pumpv0)
 sigma_p_e = spl_sigma_e(pumpv0)
 
-length = 5
+length = 1
 
 ydf = YDF(
     f_r=f_r,
@@ -157,6 +157,10 @@ model_fwd, sim_fwd, model_bck, sim_bck = ydfa.amplify(
 )
 sim = sim_fwd
 
+import inspect
+print("sim.plot is defined in:", inspect.getsourcefile(sim.plot))
+print("sim.plot signature:", inspect.signature(sim.plot))
+
 # %% ----------- plot results -------------------------------------------------
 sol_Pp = sim.Pp
 sol_Ps = np.sum(sim.p_v * pulse.dv * f_r, axis=1)
@@ -183,8 +187,8 @@ ax2.set_xlabel("position (m)")
 ax2.set_ylabel("population inversion")
 fig.tight_layout()
 
-sim.plot(
-    "wvl",
-    num=f"spectral evolution for {length} normal ydf and {length_pm980} pm980 pre-chirp",
-)
+base = f"spectral evolution for {length} normal ydf and {length_pm980} pm980 pre-chirp"
+sim.plot("wvl", num=base + " (dB)", scale="db", db_floor=-40.0, normalize=True)
+sim.plot("wvl", num=base + " (linear)", scale="lin", normalize=True)
+
 plt.show()
